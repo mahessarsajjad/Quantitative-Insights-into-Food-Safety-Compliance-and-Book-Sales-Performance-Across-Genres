@@ -1,0 +1,664 @@
+---
+title: 'Business Statistics End-Term Assessment IB94X0 2022-2023'
+author: '2288495'
+output:
+  html_document:
+    toc: yes
+    toc_depth: 3
+---
+# Question 1:
+## Section 1:
+
+
+
+
+
+This is to certify that the work I am submitting is my own. All external references and sources are clearly acknowledged and identified within the contents. I am aware of the University of Warwick regulation concerning plagiarism and collusion.
+
+No substantial part(s) of the work submitted here has also been submitted by me in other assessments for accredited courses of study, and I acknowledge that if this has been done an appropriate reduction in the mark I might otherwise have received will be made.
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(knitr) # for kable()
+#library(kableExtra) # for cell_spec()
+#library(Rmisc) # for CI()
+library(tidyverse)
+library(emmeans) # for emmeans() and pairs()
+library(gridExtra) # for grid.arrange()
+library(Hmisc)
+library(janitor)
+library(dplyr)
+library(tidyr)
+library(ROSE)
+library(caTools)
+library(plyr)
+library(car)
+
+```
+
+
+
+The data set is provided by the Agency of Food Standards. The data set contains the following variable:
+
+
+Variable | Discription
+-------  | --------
+Country  | This is the Country of the Local Authority 
+La_type  | Type of Local Authority 
+La_name   | Name of Local Authority 
+Totalestablisments_includingnotyetrated_inside | These are the total number of establishments in the area which also include those that have not been rated and are yet to be part of the programme 
+establishmentnotyetratedforintervention | These are number of establishments that are to be rated for the intervention
+establishmentoutsidetheprogramme | These are the number of establishments which are not part of the programme yet
+Total_percent_of_broadly_compliantestablishmentsrated_a_e | These are total percentages of establishments which are rated from A to E and then are in general compliance 
+Total_percent_of_broadly_compliantestablishments_includingnotyetrated | These are total percentages of establishments which are not rated are in general compliance with the regulations
+Aratedestablishments | These are establishments which are in the Area and are rated A(These have the most impact on the health of public)
+Total_percent_of_broadly_compliantestablishments_a | A rated establishments which are broadly compliant
+Bratedestablishments | These are the establishments which are in the AreaB
+Total_percent_of_broadly_compliantestablishments_b | These are total number of establishments which are rated B and are only broadly compliant 
+Cratedestablishments | These are number of establishments which are only rated in the Area C
+Total_percent_of_broadly_compliantestablishments_c | These are only total percentages of establishments in the Area rated C and are broadly compliant 
+Dratedestablishments | These are number of establishments which are only rated in the Area D
+Total_percent_of_broadly_compliantestablishments_d | These are only total percentages of establishments in the Area rated D and are broadly complaint 
+Eratedestablishments | Number of establishments in the Area rated E
+Total_percent_of_broadly_compliantestablishments_e | These are only total percentages of establishments in the Area rated E and are broadly compliant 
+Total_percent_of_interventionsachieved_premisesrated_a_e) | These are total percentage of premises rated A to E for all premises
+Total_percent_of_interventionsachieved_premisesrated_a | These are total percentage of premises rated A
+Total_percent_of_interventionsachieved_premisesrated_b | These are total percentage of premises rated B
+Total_percent_of_interventionsachieved_premisesrated_c | These are total percentage of premises rated C
+Total_percent_of_interventionsachieved_premisesrated_d | These are total percentage of premises rated D
+Total_percent_of_interventionsachieved_premisesrated_e | These are total percentage of premises rated E
+Total_percent_of_interventionsachieved_premisesnotyetrated | These are total percentage of interventions that are not yet rated
+Totalnumberofestablishmentssubjecttoformalenforcementactions_voluntaryclosure | These are total number of establishments which are subjected to formal enforcement actions such as voluntary closure 
+Totalnumberofestablishmentssubjecttoformalenforcementactions_seizure_detention_surrenderoffood | These are total number of establishments which are subjected to formal enforcements like food surrender, seizures or Detention  
+Totalnumberofestablishmentssubjecttoformalenforcementactions_suspension_revocationofapprovalorlicence | These are total number of establishments which are facing formal enforcement actions like revocation of their license approval or suspension
+Totalnumberofestablishmentssubjecttoformalenforcementactions_hygieneemergencyprohibitionnotice | These are total number of establishments which are subjected to formal enforcements actions like receiving a Hygeine Emergency Prohibition Notice
+Totalnumberofestablishmentssubjecttoformalenforcementactions_prohibitionorder | These are total number of establishments which are subjected to formal enforcements actions like receiving an order of prohibition
+Totalnumberofestablishmentssubjecttoformalenforcementactions_simplecaution | Thesea re total number of establishments which are subjected to formal enforcements actions like a simple caution
+Totalnumberofestablishmentssubjecttoformalenforcementactions_hygieneimprovementnotices | These are total number of establshments which are subjected to formal engagements like receiving hygiene improvements notices
+Totalnumberofestablishmentssubjecttoformalenforcementactions_remedialaction_detentionnotices| These are total number of establishments which are subjected to formal enforcements actions like detection notices or remedial action
+Totalnumberofestablishmentssubjectto_writtenwarnings | These are total number of establishments which are subjected to written form of warnings
+Totalnumberofestablishmentssubjecttoformalenforcementactions_Prosecutionsconcluded | Thesea re total number of establishments which are subjected to formal enforcements actions whcich are concluded prosecutions 
+Professional_full_time_equivalent_posts_occupied | These are total number of professional full time positions which are currently occupied by the local authority 
+
+---
+
+
+
+```{r}
+food_hygeine <- read_csv('2019-20-enforcement-data-food-hygiene.csv')
+food_hygeine <- food_hygeine %>% clean_names()
+
+food_hygeine <- na.omit(food_hygeine)
+
+food_hygeine$total_percent_of_interventionsachieved_premisesrated_a <- replace(food_hygeine$total_percent_of_interventionsachieved_premisesrated_a, food_hygeine$total_percent_of_interventionsachieved_premisesrated_a == 'NR', 0)
+
+food_hygeine$total_percent_of_interventionsachieved_premisesrated_a = as.numeric(food_hygeine$total_percent_of_interventionsachieved_premisesrated_a)
+
+food_hygeine$country = as.factor(food_hygeine$country)
+food_hygeine$la_type = as.factor(food_hygeine$la_type)
+food_hygeine$la_name = as.factor(food_hygeine$la_name)
+
+
+
+#summary(food_hygeine)
+
+#AS we can observe that in column interventions there are 24 NAs which achieve the premis rated A, and we shall replace them, and we should do that with the mean of interventions. 
+
+avg_premisesrateda <- mean(food_hygeine$total_percent_of_interventionsachieved_premisesrated_a, na.rm = TRUE)
+
+food_hygeine <- replace_na(food_hygeine, list(total_percent_of_interventionsachieved_premisesrated_a = avg_premisesrateda))
+
+```
+```{r}
+#x1 <- na.omit(food_hygeine)
+```
+
+
+### 1.1 Distribution of the % of enforcement actions successfully achieved
+
+#### 1.1.1 Distribution for all levels combined
+
+```{r}
+ggplot(data = food_hygeine, aes(x= total_percent_of_interventionsachieved_premisesrated_a_e, position = 'identity', fill = country)) + geom_histogram(binwidth = 1) + 
+  labs(x="Percentage %", y = "Count", title = "Distrbution of Successful Enforcement Action Percentage for All Levels A-E")
+
+```
+#### 1.1.2 Distribution for level A-E seperately
+
+```{r}
+##GGplot for all different premis rated, premis rated from A to E
+ggplot(data = food_hygeine, aes(x=total_percent_of_interventionsachieved_premisesrated_a)) +
+  geom_histogram(binwidth = 1,colour="black", fill="orange") + 
+  labs(x = 'Interventions achieved A(in %)', y = 'Count', title = "Distrbution of Successful Enforcement Action Percentage for Level A") + 
+  ylim(0,400) +
+  scale_y_continuous( limit=c(0,400),breaks = seq(0,400,25),expand = c(0,0))
+
+ggplot(data = food_hygeine, aes(x=total_percent_of_interventionsachieved_premisesrated_b)) + geom_histogram(binwidth = 1,colour="black", fill="orange") + labs(x = 'Interventions Achieved B(in %)', y = 'Count', title = "Distrbution of Successful Enforcement Action Percentage for Level B") +
+   ylim(0,350) +
+  scale_y_continuous( breaks = seq(0,350,25),expand = c(0,0))
+
+ggplot(data = food_hygeine, aes(x=total_percent_of_interventionsachieved_premisesrated_c)) + geom_histogram(binwidth = 1,colour="black", fill="orange") + labs(x = 'Interventions Achieved C(in %)', y = 'Count', title = "Distrbution of Successful Enforcement Action Percentage for Level C") +
+ ylim(0,350) +
+  scale_y_continuous( breaks = seq(0,200,25),expand = c(0,0))
+
+ggplot(data = food_hygeine, aes(x=total_percent_of_interventionsachieved_premisesrated_d)) + geom_histogram(binwidth = 1,colour="black", fill="orange") + labs(x = 'Interventions Achieved D(in %)', y = 'count', title = "Distrbution of Successful Enforcement Action Percentage for Level D") + 
+ ylim(0,350) +
+  scale_y_continuous( breaks = seq(0,350,25),expand = c(0,0))
+
+ggplot(data = food_hygeine, aes(x=total_percent_of_interventionsachieved_premisesrated_e)) + geom_histogram(binwidth = 1,colour="black", fill="orange") + labs(x = 'Interventions Achieved E(in %)', y = 'count', title = "Distrbution of Successful Enforcement Action Percentage for Level E") +
+   ylim(0,350) +
+  scale_y_continuous( breaks = seq(0,350,25),expand = c(0,0))
+
+```
+
+
+
+
+### 1.2 Relationship between proportion of successful responses and the number of employees
+
+```{r, message=FALSE, warning=FALSE}
+
+food_hygeine_correlation <- rcorr(as.matrix(select(food_hygeine, total_percent_of_interventionsachieved_premisesrated_e,total_percent_of_interventionsachieved_premisesrated_d,total_percent_of_interventionsachieved_premisesrated_c,total_percent_of_interventionsachieved_premisesrated_b,total_percent_of_interventionsachieved_premisesrated_a,total_percent_of_interventionsachieved_premisesrated_a_e,professional_full_time_equivalent_posts_occupied)), type = "spearman")
+
+food_hygeine_correlation
+
+##Linear regression model to see the relationship between number of employees and all successful premis enforcement achieved 
+ggplot(food_hygeine, aes(y=total_percent_of_interventionsachieved_premisesrated_a_e, x=professional_full_time_equivalent_posts_occupied)) + geom_point()+ labs(x= "No. of Employees", y="All Successful Premises Enforcement Achieved (in percentage %)")+ geom_smooth(method=lm) + geom_jitter()
+
+```
+```{r}
+
+
+FullTimeEmployeesAtoE <- lm(total_percent_of_interventionsachieved_premisesrated_a_e ~ professional_full_time_equivalent_posts_occupied, data = food_hygeine)
+
+FullTimeEmployeesAtoE
+
+summary(FullTimeEmployeesAtoE)
+
+cbind(coeffcient=coef(FullTimeEmployeesAtoE), confint(FullTimeEmployeesAtoE))
+
+FullTimeEmployeesA <- lm(total_percent_of_interventionsachieved_premisesrated_a ~ professional_full_time_equivalent_posts_occupied, data = food_hygeine)
+
+FullTimeEmployeesB <- lm(total_percent_of_interventionsachieved_premisesrated_b ~ professional_full_time_equivalent_posts_occupied, data = food_hygeine)
+
+FullTimeEmployeesC <- lm(total_percent_of_interventionsachieved_premisesrated_c ~ professional_full_time_equivalent_posts_occupied, data = food_hygeine)
+
+FullTimeEmployeesD <- lm(total_percent_of_interventionsachieved_premisesrated_d ~ professional_full_time_equivalent_posts_occupied, data = food_hygeine)
+
+FullTimeEmployeesE <- lm(total_percent_of_interventionsachieved_premisesrated_e ~ professional_full_time_equivalent_posts_occupied, data = food_hygeine)
+
+##Adjusted R-squared:  -0.002318 
+##F-statistic: 0.1998 on 1 and 345 DF,  p-value: 0.6552
+
+
+```
+
+### 1.3 Relationship between proportion of successful responses and the number of employees as a proportion of the number of establishments
+
+
+```{r}
+food_hygeine_new <- food_hygeine %>% mutate(total_rated_establishments = (totalestablishments_includingnotyetrated_outside - establishmentsnotyetratedforintervention - establishmentsoutsidetheprogramme), Employees_Proportion = round((professional_full_time_equivalent_posts_occupied /total_rated_establishments)*100,2))
+
+```
+
+
+```{r}
+
+FTemployeesAtoE <- lm(total_percent_of_interventionsachieved_premisesrated_a_e ~ Employees_Proportion, data = food_hygeine_new)
+
+summary(FTemployeesAtoE )
+
+cbind(coeffcient=coef(FTemployeesAtoE ), confint(FTemployeesAtoE))
+
+##Adjusted R-squared:  0.03959 
+##F-statistic: 15.26 on 1 and 345 DF,  p-value: 0.0001126
+
+FTemployeesforA <- lm(total_percent_of_interventionsachieved_premisesrated_a ~ Employees_Proportion, data = food_hygeine_new)
+
+summary(FTemployeesforA)
+
+cbind(coeffcient=coef(FTemployeesforA), confint(FTemployeesforA))
+
+##Adjusted R-squared:  -0.002846 
+##F-statistic: 0.01805 on 1 and 345 DF,  p-value: 0.8932
+
+FTemployeesforB <- lm(total_percent_of_interventionsachieved_premisesrated_b ~ Employees_Proportion, data = food_hygeine_new)
+
+summary(FTemployeesforB)
+
+cbind(coeffcient=coef(FTemployeesforB), confint(FTemployeesforB))
+
+##Adjusted R-squared:  -0.002546 
+##F-statistic: 0.1214 on 1 and 345 DF,  p-value: 0.7277
+
+FTemployeesforC <- lm(total_percent_of_interventionsachieved_premisesrated_c ~ Employees_Proportion, data = food_hygeine_new)
+
+summary(FTemployeesforC)
+
+cbind(coeffcient=coef(FTemployeesforC), confint(FTemployeesforC))
+
+##Adjusted R-squared:  0.01528 
+##F-statistic: 6.368 on 1 and 345 DF,  p-value: 0.01207
+
+FTemployeesforD <- lm(total_percent_of_interventionsachieved_premisesrated_d ~ Employees_Proportion, data = food_hygeine_new)
+
+summary(FTemployeesforD)
+
+cbind(coeffcient=coef(FTemployeesforD), confint(FTemployeesforD))
+
+##Adjusted R-squared:  0.01312 
+##F-statistic: 5.602 on 1 and 345 DF,  p-value: 0.0185
+
+FTemployeesforE <- lm(total_percent_of_interventionsachieved_premisesrated_e ~ Employees_Proportion, data = food_hygeine_new)
+
+summary(FTemployeesforE)
+
+cbind(coeffcient=coef(FTemployeesforE), confint(FTemployeesforE))
+
+##Adjusted R-squared:  0.03561 
+##F-statistic: 13.78 on 1 and 345 DF,  p-value: 0.0002398
+
+
+
+```
+
+
+
+```{r}
+
+food_hygeine$total_percent_of_interventionsachieved_premisesrated_a = as.numeric(food_hygeine$total_percent_of_interventionsachieved_premisesrated_a)
+
+str(food_hygeine)
+
+```
+
+
+
+```{r, echo=FALSE}
+
+##Distribution of all levels with different countries coloured differently to see what is the relationship
+ggplot(data = food_hygeine, aes(x= total_percent_of_interventionsachieved_premisesrated_a_e, position = 'identity', fill = country)) + geom_histogram(binwidth = 1) + 
+  labs(x="Percentage %", y = "Count", title = "Distrbution of Successful Enforcement Action Percentage for All Levels A-E")
+```
+
+
+
+
+
+
+## Question 1 Section 2:
+
+### Part 1: Distribution of successful respond percentage
+
+We can see in this Figure that we have shown dispersion of all interventions across all establishments from rated A to rated E in three regions which are England, Northern Ireland and Wales. It is visibily clear from the figure that the enforcement of local authorities lies in the range of 90-100% which tells us that the efficiency of our local authorities is really high.
+
+And we have also plotted graph from A rating to E rating, in which we show separate histograms and what is the efficiency of local authorities, and as we can establish from the graphs above that the success rate of local authorities and its intervention is highest for establishments which have rating A and then followed with B, C, D and E. We can see that all of the graphs have peak on their right, which means more than 75% of the local authorities are successful in implementing the interventions. 
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+
+food_hygeine_correlation <- rcorr(as.matrix(select(food_hygeine, total_percent_of_interventionsachieved_premisesrated_e,total_percent_of_interventionsachieved_premisesrated_d,total_percent_of_interventionsachieved_premisesrated_c,total_percent_of_interventionsachieved_premisesrated_b,total_percent_of_interventionsachieved_premisesrated_a,total_percent_of_interventionsachieved_premisesrated_a_e,professional_full_time_equivalent_posts_occupied)), type = "spearman")
+
+food_hygeine_correlation
+##Linear model to see a relationship between number of employees and successful premis enforcement achieved in percentage
+ggplot(food_hygeine, aes(y=total_percent_of_interventionsachieved_premisesrated_a_e, x=professional_full_time_equivalent_posts_occupied)) + geom_point()+ labs(x= "No. of Employees", y="All Successful Premises Enforcement Achieved (in percentage %)")+ geom_smooth(method=lm) + geom_jitter()
+```
+
+
+
+### Part 2: Relationship between proportion of successful responses and the number of employees
+
+This tells us the relationship between the overall successful interventions of establishments which ratings from A to E. This is a scatter plot and what we understand, and what we can derive from it is that there is a weak relationship, which is strongly inverse, there is no significant link between the two variables. And we have also taken in consideration certain statistical values to ensure that there is not a significant strong relationship. Thus, we can conclude that hiring more employees or professionals has any major impact on the success of interventions. 
+
+
+
+### Part 3: Relationship between proportion of successful responses and the number of employees over establishments
+For Objective 3 we have used certain statistical measure. The statistical measure that we have used is called r, which is correlation, and co relation is that how are two variables linked or related to each other, and if the r value is from 0 to -1 there is a negative relation, if the r value is between 0 to 1, we can say that there is a postive corelation, here we can see that the correlation is 0.23, and another statistical measure which tells us if the correlation is significant or not is p value, which here is 0.0001126 we can say the correlation is significant, and we can with this conclusion say that the number of employees should be increased so that the success rate of interventions in establishments of local authorities could be improved. 
+
+
+
+
+title: "Question 2 Section 1"
+author: "u2288495"
+date: "2023-12-14"
+output: html_document
+
+# Question 2:
+## Section 1:
+
+** Data Dictionary **
+
+This dataset is provided by a Publishing Company. The variables in the dataset are as follows:
+
+
+Variable | Description
+------------- | -------------
+sold by | This is the name of the publisher who is selling the book
+publisher_type | This is the type of the publisher who is selling the book
+genre | This is the genre of the book
+avg_review | This is the average review which is given to by the readers to the book
+daily_sales | These are average number of sales minus refunds over the entirety of this specific period 
+total_reviews | This column contains the total number of reviews which are given by the readers in the book 
+sale_price | These is the total average price which is sold over this specific course of period
+---
+
+```{r}
+salesofbooks <- read_csv('publisher_sales.csv')
+salesofbooks <- salesofbooks %>% clean_names()
+#summary(salesofbooks)
+
+salesofbooks$genre <- as.factor(salesofbooks$genre)
+
+```
+
+```{r}
+mean.dailySales.genre <- salesofbooks %>% group_by(genre) %>% summarise(daily_sales=mean(daily_sales))
+mean.dailySales.genre
+```
+
+```{r}
+m.dailySales.by.genre <- lm(daily_sales~genre, data=salesofbooks)
+anova(m.dailySales.by.genre)
+```
+```{r}
+summary(m.dailySales.by.genre)
+```
+
+```{r}
+(  m.dailySales.by.genre.emm <- emmeans(m.dailySales.by.genre, ~genre)  )
+```
+```{r}
+(  m.dailySales.by.genre.contruct <- confint(pairs(m.dailySales.by.genre.emm))  )
+```
+### 2.1 Do books from different genres have different daily sales on average?
+
+```{r}
+#Plot a CI for a difference
+grid.arrange(
+  ci<-
+    ggplot(summary(m.dailySales.by.genre.emm), aes(x=genre, y=emmean, ymin=lower.CL, ymax=upper.CL)) 
+  + geom_point() 
+  + geom_linerange() 
+  + labs(y="Daily Sales", x="Genre", subtitle="Error bars are 95% CIs", title="Daily Sales") 
+  + ylim(50,110) 
+  + coord_flip(),
+  
+  d.ci<-
+    ggplot(m.dailySales.by.genre.contruct, aes(x=contrast, y=estimate, ymin=lower.CL, ymax=upper.CL)) 
+  + geom_point() 
+  + geom_linerange() 
+  + labs(y="Difference in Daily Sales", x="Contrast", subtitle="Error bars are 95% CIs", title="Difference in Daily Sales") 
+  + ylim(-55,35)
+  + coord_flip(),
+  nrow=2
+)
+```
+
+
+
+```{r, message= FALSE, warning= FALSE}
+ggplot(data = salesofbooks, aes(x = daily_sales, color = genre)) + geom_histogram(binwidth = 1) + xlim(-10,200) + labs(title = "Daily Sales aganst Genre of Books")
+
+##To check what is the daily sales of books against which type of genres and we can see here children genre out numbers fiction and non fiction
+```
+
+
+```{r, message= FALSE, warning= FALSE}
+ggplot(data = salesofbooks, aes(x = sale_price)) + geom_histogram(binwidth = 0.2) + labs(title = "Distribution of Count against Sale Price")
+
+
+```
+
+```{r}
+ggplot(data = salesofbooks, aes(x = avg_review, fill = sold_by)) + geom_histogram(binwidth = 0.1) + labs(title = "Distribution of Avg Review against number of Books of seller categories")
+
+##To check the distrubution of average reviews of different seller categories to see how skewed the distribution is or not 
+
+```
+
+```{r}
+
+ggplot(data = salesofbooks, aes(x = total_reviews)) + geom_histogram(binwidth = 2)
+##To see the distrbution of total reviews, and we can see there are 0 values which are 24 and has been shown in the graph
+```
+
+```{r}
+
+summarytable <- salesofbooks %>% group_by(genre) %>% summarise_at(vars(daily_sales),              
+               list(mean_sales = mean)) 
+```
+
+```{r}
+ggplot(summarytable, aes(y = genre, x = mean_sales)) + 
+  geom_col()
+##mean of sales against genre to see and assess the relationship
+
+```
+### 2.2 Do books have more/fewer sales depending upon their average review scores and total number of reviews?
+
+```{r, message=FALSE, warning=FALSE}
+#ggplot(salesofbooks, aes(x= avg_review, y = daily_sales)) + geom_point() + geom_smooth() + labs(title = "Relation of Daily Sales against Average Review")
+## Plotting ggplot and finding out that there are 0 Average Review values 
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+##filtering avg reviews values which are equal to zero
+p <- salesofbooks %>%
+  filter(avg_review != 0)
+
+
+ggplot(p, aes(x= avg_review, y = daily_sales)) + geom_point() + geom_smooth()  + labs(title = "Daily Sales against Genre of Books", subtitle = "With 0 avg reviews removed")
+
+##Added a filter and made a ggplot of avg_review against daily_sales with 0 reviews removed 
+```
+
+```{r}
+cor(salesofbooks$avg_review,salesofbooks$daily_sales, method = "spearman" )
+```
+
+
+```{r, message= FALSE, warning= FALSE}
+##ggplot(salesofbooks, aes(x= total_reviews, y = daily_sales)) + geom_point() + geom_smooth(method = lm) + labs(title = "Daily Sales against Total Reviews")
+
+```
+
+```{r, message= FALSE, warning= FALSE}
+ggplot(p, aes(x= total_reviews, y = daily_sales)) + geom_point() + geom_smooth(method = lm) + ylim(0, 270) + labs(title = "Daily Sales against Total Reviews", subtitle = "with 0 reviews removed")
+
+##Added a filter and made a ggplot of total_reviews against daily_sales with 0 reviews removed 
+
+
+```
+```{r}
+cor(salesofbooks$total_reviews,salesofbooks$daily_sales, method = "spearman" )
+```
+
+```{r, message= FALSE, warning= FALSE}
+ggplot(p, aes(x= avg_review, y = total_reviews)) + geom_point() + geom_smooth(method = lm) + ylim(0, 260) + labs(title = "Total Reviews against Average Review")
+
+```
+
+```{r}
+rcorr(as.matrix(salesofbooks %>% select(avg_review, daily_sales, total_reviews, sale_price)))
+```
+
+
+### 2.3 What is the effect of sale price upon the number of sales, and is this different across genres?
+
+```{r}
+ggplot(salesofbooks, aes(x = daily_sales)) + geom_boxplot() + labs(x="daily sales", y="frequency") + facet_grid(facets =  "genre", col = T)
+
+m.daily.sales.by.genre <- lm(daily_sales ~ genre, data = salesofbooks)
+ 
+(m.daily.sales.by.genre.emm <- emmeans(m.daily.sales.by.genre, ~genre))
+
+summary(m.daily.sales.by.genre)
+```
+
+
+
+```{r, message=FALSE, warning=FALSE}
+m.sales_review_A <- lm(daily_sales ~ avg_review + total_reviews, data = salesofbooks)
+summary(m.sales_review_A)
+
+cbind(coef(m.sales_review_A), confint(m.sales_review_A))
+
+m.sales_review_B <- lm(daily_sales ~ avg_review * total_reviews, data = salesofbooks)
+summary(m.sales_review_B)
+
+cbind(coef(m.sales_review_B), confint(m.sales_review_B))
+
+anova(m.sales_review_A, m.sales_review_B)
+
+ggplot( data = salesofbooks, aes(x= daily_sales, y= avg_review)) + geom_point() +geom_smooth(method = "lm") #Plotting a scatter plot to know the relationship between sales and average review
+
+ggplot( data = salesofbooks, aes(x= daily_sales, y= total_reviews)) + geom_point() +geom_smooth(method = "lm") #Plotting a scatter plot to know the relationship between sales and total review
+
+ggplot(salesofbooks, aes(x= avg_review, y = total_reviews)) + geom_point() + geom_smooth(method = lm)
+```
+
+
+```{r}
+
+m.sales_price_for_genre_A <- lm(daily_sales ~ sale_price + genre, data = salesofbooks)
+summary(m.sales_price_for_genre_A)
+
+cbind(coef(m.sales_price_for_genre_A), confint(m.sales_price_for_genre_A))
+
+m.sales_price_for_genre_B <- lm(daily_sales ~ sale_price * genre, data = salesofbooks)
+summary(m.sales_price_for_genre_B)
+
+cbind(coef(m.sales_price_for_genre_B), confint(m.sales_price_for_genre_B))
+
+anova(m.sales_price_for_genre_A, m.sales_price_for_genre_B)
+
+vif(m.sales_price_for_genre_A)
+
+vif(m.sales_price_for_genre_B, type = 'predictor')
+```
+
+
+
+
+```{r}
+salesbytotalreview <- lm(daily_sales ~ total_reviews, data = salesofbooks)
+summary(salesbytotalreview)
+```
+
+```{r}
+(salesofbooks <- salesofbooks %>% mutate(sales.hat=predict(salesbytotalreview)))
+```
+
+
+
+```{r, message= FALSE, warning= FALSE}
+
+ggplot(salesofbooks, mapping = aes(y=daily_sales, x=total_reviews, ymin=daily_sales, ymax=sales.hat)) + 
+    geom_point() + 
+  labs(x="total reviews", y="daily sales", title = "Total Reviews against Daily Sales", subtitle="Vertical lines show the residuals") + 
+    geom_smooth(method=lm)
+##Plotted for understanding as to what is the relationship between total reviews and daily sales, and we can conclude that there is a positive relationship, as total reviews increase, daily sales will increase as well. 
+  
+```
+
+```{r}
+salesbyavgreview <- lm(daily_sales ~ avg_review, data = salesofbooks)
+summary(salesbyavgreview)
+salesbyavgreviewtotalreviews <- lm(daily_sales ~ avg_review + total_reviews, data= salesofbooks)
+
+```
+```{r}
+anova(salesbyavgreviewtotalreviews)
+```
+
+
+```{r}
+children <- salesofbooks %>% filter(genre == 'childrens')
+fiction <- salesofbooks %>% filter(genre == 'fiction')
+nonfiction <- salesofbooks %>% filter(genre == 'non_fiction')
+
+```
+
+
+
+
+```{r, message=FALSE, warning=FALSE}
+
+ggplot(data = nonfiction, aes(x = sale_price, y = daily_sales)) + geom_point() + geom_smooth(method = lm) + labs(title = "Daily Sales Against Sale Price")
+salesbysalepricegenre <- lm(daily_sales ~ sale_price * genre, data=salesofbooks)
+anova(salesbysalepricegenre)
+
+```
+
+## Question 2 Section 2:
+### Part 1. Different genres have different daily sales on average
+
+```{r, echo=FALSE}
+#Plot a CI for a difference
+grid.arrange(
+  ci<-
+    ggplot(summary(m.dailySales.by.genre.emm), aes(x=genre, y=emmean, ymin=lower.CL, ymax=upper.CL)) 
+  + geom_point() 
+  + geom_linerange() 
+  + labs(y="Daily Sales", x="Genre", subtitle="Error bars are 95% CIs", title="Daily Sales") 
+  + ylim(50,110) 
+  + coord_flip(),
+  
+  d.ci<-
+    ggplot(m.dailySales.by.genre.contruct, aes(x=contrast, y=estimate, ymin=lower.CL, ymax=upper.CL)) 
+  + geom_point() 
+  + geom_linerange() 
+  + labs(y="Difference in Daily Sales", x="Contrast", subtitle="Error bars are 95% CIs", title="Difference in Daily Sales") 
+  + ylim(-55,35)
+  + coord_flip(),
+  nrow=2
+)
+```
+
+From the above figure we can clearly state that the genre that is "fiction" it has almost as double sales on average when compares to the genre "children" and we can conclude that different genres have different sales on average.
+
+
+
+### Part 2. Daily sales increase as average review scores and total reviews increase
+
+
+The relationship of daily sales and average review can not be properly established here and we can not conclude much so we need to consider the relationship of total reviews and daily sales, and see where we reach and what conclusion is where we get at, and we also see relationship of average reviews and total reviews.
+
+```{r, message= FALSE, warning= FALSE, echo= FALSE}
+ggplot(salesofbooks, aes(x= total_reviews, y = daily_sales)) + geom_point() + geom_smooth(method = lm) + labs(title = "Daily Sales against Total Reviews")
+
+ggplot(salesofbooks, aes(x= avg_review, y = total_reviews)) + geom_point() + geom_smooth(method = lm) + labs(title = "Avg Reviews aganst Total Reviews")
+
+##filtering avg reviews values which are equal to zero
+p <- salesofbooks %>%
+  filter(avg_review != 0)
+
+
+ggplot(p, aes(x= avg_review, y = daily_sales)) + geom_point() + geom_smooth()  + labs(title = "Daily Sales against Average Review", subtitle = "With 0 avg reviews removed")
+
+```
+
+Now looking at these three scatter plots above and after looking at the relationship of daily sales against total reviews and daily sales against average reviews, and it is hard to come to a conclusion so we have plotted average reviews against total reviews as well, and we can see that as average number of reviews and total reviews are increasing, along with it daily sales are also increasing. So we can say that as total number of reviews are increasing, daily sales will increase as well. And we have further proved it with statsitical measure which is correlation, and the value of corelation here is 0.68.
+As per our model, we can establish that for every increasae of 1 in the total review score, the daily sales will increase bt around 0.63£ and for every increase in the average review about 1, the daily sales will decrease around £0.3.
+
+
+
+
+### Part 3. Negative effect of sale price upon the number of sales, different across genre
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+ggplot(data = nonfiction, aes(x = sale_price, y = daily_sales)) + geom_point() + geom_smooth(method = lm) + labs(title = "Daily Sales Against Sale Price")
+
+```
+```
+
+
+We can say here that as the sale price will increase the daily sales will decrease slightly as well, and we can conclude that there is a negative relationship between sale price and daily sales. 
+
